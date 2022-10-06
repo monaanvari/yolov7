@@ -85,7 +85,7 @@ class Detect(nn.Module):
         z = torch.cat(z, 1)
         box = z[:, :, :4]
         conf = z[:, :, 4:5]
-        score = z[:, :, 5:]
+        score = z[:, :, 6:]
         score *= conf
         convert_matrix = torch.tensor([[1, 0, 1, 0], [0, 1, 0, 1], [-0.5, 0, 0.5, 0], [0, -0.5, 0, 0.5]],
                                            dtype=torch.float32,
@@ -104,7 +104,7 @@ class IDetect(nn.Module):
     def __init__(self, nc=80, anchors=(), ch=()):  # detection layer
         super(IDetect, self).__init__()
         self.nc = nc  # number of classes
-        self.no = nc + 5  # number of outputs per anchor
+        self.no = nc + 6  # number of outputs per anchor
         self.nl = len(anchors)  # number of detection layers
         self.na = len(anchors[0]) // 2  # number of anchors
         self.grid = [torch.zeros(1)] * self.nl  # init grid
@@ -198,7 +198,7 @@ class IDetect(nn.Module):
         z = torch.cat(z, 1)
         box = z[:, :, :4]
         conf = z[:, :, 4:5]
-        score = z[:, :, 5:]
+        score = z[:, :, 6:]
         score *= conf
         convert_matrix = torch.tensor([[1, 0, 1, 0], [0, 1, 0, 1], [-0.5, 0, 0.5, 0], [0, -0.5, 0, 0.5]],
                                            dtype=torch.float32,
@@ -421,7 +421,7 @@ class IAuxDetect(nn.Module):
         z = torch.cat(z, 1)
         box = z[:, :, :4]
         conf = z[:, :, 4:5]
-        score = z[:, :, 5:]
+        score = z[:, :, 6:]
         score *= conf
         convert_matrix = torch.tensor([[1, 0, 1, 0], [0, 1, 0, 1], [-0.5, 0, 0.5, 0], [0, -0.5, 0, 0.5]],
                                            dtype=torch.float32,
@@ -637,7 +637,7 @@ class Model(nn.Module):
         for mi, s in zip(m.m, m.stride):  # from
             b = mi.bias.view(m.na, -1)  # conv.bias(255) to (3,85)
             b.data[:, 4] += math.log(8 / (640 / s) ** 2)  # obj (8 objects per 640 image)
-            b.data[:, 5:] += math.log(0.6 / (m.nc - 0.99)) if cf is None else torch.log(cf / cf.sum())  # cls
+            b.data[:, 6:] += math.log(0.6 / (m.nc - 0.99)) if cf is None else torch.log(cf / cf.sum())  # cls
             mi.bias = torch.nn.Parameter(b.view(-1), requires_grad=True)
 
     def _initialize_aux_biases(self, cf=None):  # initialize biases into Detect(), cf is class frequency
@@ -647,11 +647,11 @@ class Model(nn.Module):
         for mi, mi2, s in zip(m.m, m.m2, m.stride):  # from
             b = mi.bias.view(m.na, -1)  # conv.bias(255) to (3,85)
             b.data[:, 4] += math.log(8 / (640 / s) ** 2)  # obj (8 objects per 640 image)
-            b.data[:, 5:] += math.log(0.6 / (m.nc - 0.99)) if cf is None else torch.log(cf / cf.sum())  # cls
+            b.data[:, 6:] += math.log(0.6 / (m.nc - 0.99)) if cf is None else torch.log(cf / cf.sum())  # cls
             mi.bias = torch.nn.Parameter(b.view(-1), requires_grad=True)
             b2 = mi2.bias.view(m.na, -1)  # conv.bias(255) to (3,85)
             b2.data[:, 4] += math.log(8 / (640 / s) ** 2)  # obj (8 objects per 640 image)
-            b2.data[:, 5:] += math.log(0.6 / (m.nc - 0.99)) if cf is None else torch.log(cf / cf.sum())  # cls
+            b2.data[:, 6:] += math.log(0.6 / (m.nc - 0.99)) if cf is None else torch.log(cf / cf.sum())  # cls
             mi2.bias = torch.nn.Parameter(b2.view(-1), requires_grad=True)
 
     def _initialize_biases_bin(self, cf=None):  # initialize biases into Detect(), cf is class frequency
@@ -676,14 +676,14 @@ class Model(nn.Module):
         for mi, s in zip(m.m, m.stride):  # from
             b = mi.bias.view(m.na, -1)  # conv.bias(255) to (3,85)
             b.data[:, 4] += math.log(8 / (640 / s) ** 2)  # obj (8 objects per 640 image)
-            b.data[:, 5:] += math.log(0.6 / (m.nc - 0.99)) if cf is None else torch.log(cf / cf.sum())  # cls
+            b.data[:, 6:] += math.log(0.6 / (m.nc - 0.99)) if cf is None else torch.log(cf / cf.sum())  # cls
             mi.bias = torch.nn.Parameter(b.view(-1), requires_grad=True)
 
     def _print_biases(self):
         m = self.model[-1]  # Detect() module
         for mi in m.m:  # from
             b = mi.bias.detach().view(m.na, -1).T  # conv.bias(255) to (3,85)
-            print(('%6g Conv2d.bias:' + '%10.3g' * 6) % (mi.weight.shape[1], *b[:5].mean(1).tolist(), b[5:].mean()))
+            print(('%6g Conv2d.bias:' + '%10.3g' * 6) % (mi.weight.shape[1], *b[:5].mean(1).tolist(), b[6:].mean()))
 
     # def _print_weights(self):
     #     for m in self.model.modules():
